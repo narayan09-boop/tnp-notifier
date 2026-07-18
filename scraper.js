@@ -42,6 +42,7 @@ class TnpScraper {
     await this.page.goto('https://tp.bitmesra.co.in/', { waitUntil: 'networkidle2' });
     
     console.log("Logging in as", username);
+    await this.page.waitForSelector('#identity', { visible: true, timeout: 10000 });
     await this.page.type('#identity', username);
     await this.page.type('#password', password);
     
