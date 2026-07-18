@@ -62,7 +62,8 @@ class Bot {
               console.log(`\n[DEBUG] Incoming message from ${remoteJid}. isFromMe: ${isFromMe}`);
               
               // Only respond to direct messages (not groups) to avoid spam
-              if (remoteJid.endsWith('@s.whatsapp.net')) {
+              // Note: Modern WhatsApp multi-device can use @s.whatsapp.net or @lid for direct messages
+              if (remoteJid.endsWith('@s.whatsapp.net') || remoteJid.endsWith('@lid')) {
                 // Safely extract text from normal, quoted, and disappearing (ephemeral) messages
                 const messageContent = msg.message?.ephemeralMessage?.message || msg.message;
                 const text = messageContent?.conversation || messageContent?.extendedTextMessage?.text || "";
