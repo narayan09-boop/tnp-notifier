@@ -1,0 +1,8 @@
+node_modules
+auth
+baileys_auth
+.env
+*.html
+*.png
+*.log
+.git

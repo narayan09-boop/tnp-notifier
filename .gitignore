@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+
+# WhatsApp Auth Session
+auth/
+baileys_auth/
+
+# Dumps and debugging
+*.html
+*.png
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
