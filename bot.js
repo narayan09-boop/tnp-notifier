@@ -56,17 +56,26 @@ class Bot {
             if (type !== 'notify') return;
             const msg = messages[0];
             
-            if (!msg.key.fromMe && msg.key.remoteJid) {
+            if (msg.key.remoteJid) {
               const remoteJid = msg.key.remoteJid;
+              const isFromMe = msg.key.fromMe;
               
               // Only respond to direct messages (not groups) to avoid spam
               if (remoteJid.endsWith('@s.whatsapp.net')) {
-                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+                // Safely extract text from normal, quoted, and disappearing (ephemeral) messages
+                const messageContent = msg.message?.ephemeralMessage?.message || msg.message;
+                const text = messageContent?.conversation || messageContent?.extendedTextMessage?.text || "";
                 
                 if (text) {
+                  // If it's a message from the bot itself (e.g. user testing via "Message Yourself"),
+                  // only respond to explicit slash commands to prevent infinite reply loops.
+                  if (isFromMe && !text.startsWith('/')) {
+                     return; 
+                  }
+                  
                   await this.handleCommand(remoteJid, text, msg);
                 }
-              } else if (remoteJid.endsWith('@g.us')) {
+              } else if (remoteJid.endsWith('@g.us') && !isFromMe) {
                 // Just log intercepted group messages for .env configuration
                 console.log(`\n[MESSAGE INTERCEPTED] From Group: ${remoteJid}`);
                 console.log(`-> You can use this Group ID in your .env file: ${remoteJid}`);
