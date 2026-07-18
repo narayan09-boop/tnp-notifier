@@ -75,7 +75,8 @@ class SyncService {
     console.log(`Starting sync for notification: ${rawPayload.title}`);
 
     const currentHash = this.generateNotificationHash(rawPayload);
-    rawPayload.identifier = rawPayload.link || rawPayload.title;
+    // Use the title as the unique identifier because links are often just the dashboard URL
+    rawPayload.identifier = rawPayload.title;
     
     // Episodic memory: Look up the notification by its stable identifier
     const existingNotif = await this.notifRepo.getByIdentifier(rawPayload.identifier);
