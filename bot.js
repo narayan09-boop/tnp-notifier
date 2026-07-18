@@ -59,6 +59,7 @@ class Bot {
             if (msg.key.remoteJid) {
               const remoteJid = msg.key.remoteJid;
               const isFromMe = msg.key.fromMe;
+              console.log(`\n[DEBUG] Incoming message from ${remoteJid}. isFromMe: ${isFromMe}`);
               
               // Only respond to direct messages (not groups) to avoid spam
               if (remoteJid.endsWith('@s.whatsapp.net')) {
@@ -66,14 +67,21 @@ class Bot {
                 const messageContent = msg.message?.ephemeralMessage?.message || msg.message;
                 const text = messageContent?.conversation || messageContent?.extendedTextMessage?.text || "";
                 
+                console.log(`[DEBUG] Extracted text: "${text}"`);
+                
                 if (text) {
                   // If it's a message from the bot itself (e.g. user testing via "Message Yourself"),
                   // only respond to explicit slash commands to prevent infinite reply loops.
                   if (isFromMe && !text.startsWith('/')) {
+                     console.log(`[DEBUG] Ignored because it's fromMe and doesn't start with /`);
                      return; 
                   }
                   
+                  console.log(`[DEBUG] Routing command: ${text}`);
                   await this.handleCommand(remoteJid, text, msg);
+                } else {
+                  console.log(`[DEBUG] No text could be extracted from message.`);
+                  console.log(JSON.stringify(msg, null, 2));
                 }
               } else if (remoteJid.endsWith('@g.us') && !isFromMe) {
                 // Just log intercepted group messages for .env configuration
