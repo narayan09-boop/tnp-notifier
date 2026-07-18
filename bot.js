@@ -3,9 +3,11 @@ const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 
 class Bot {
-  constructor() {
+  constructor(jobRepo, notifRepo) {
     this.sock = null;
     this.ready = false;
+    this.jobRepo = jobRepo;
+    this.notifRepo = notifRepo;
   }
 
   async initialize() {
@@ -56,9 +58,18 @@ class Bot {
             
             if (!msg.key.fromMe && msg.key.remoteJid) {
               const remoteJid = msg.key.remoteJid;
-              console.log(`\n[MESSAGE INTERCEPTED] From: ${remoteJid}`);
-              if (remoteJid.endsWith('@g.us')) {
-                console.log(`-> This is a Group ID! You can use this in your .env file: ${remoteJid}`);
+              
+              // Only respond to direct messages (not groups) to avoid spam
+              if (remoteJid.endsWith('@s.whatsapp.net')) {
+                const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
+                
+                if (text) {
+                  await this.handleCommand(remoteJid, text, msg);
+                }
+              } else if (remoteJid.endsWith('@g.us')) {
+                // Just log intercepted group messages for .env configuration
+                console.log(`\n[MESSAGE INTERCEPTED] From Group: ${remoteJid}`);
+                console.log(`-> You can use this Group ID in your .env file: ${remoteJid}`);
               }
             }
           });
@@ -70,6 +81,69 @@ class Bot {
         reject(err);
       }
     });
+  }
+
+  async handleCommand(remoteJid, text, originalMessage) {
+    const command = text.trim().toLowerCase();
+    
+    try {
+      if (command === '/ping') {
+        await this.sock.sendMessage(remoteJid, { text: "🏓 Pong! TNP Bot is alive and well." }, { quoted: originalMessage });
+      } 
+      else if (command === '/status') {
+        await this.sock.sendMessage(remoteJid, { text: "🟢 Status: Active\nMonitoring the TNP Portal for new updates." }, { quoted: originalMessage });
+      } 
+      else if (command === '/jobs' || command === '/latest_jobs') {
+        if (!this.jobRepo) {
+          await this.sock.sendMessage(remoteJid, { text: "❌ Job Database is currently unavailable." });
+          return;
+        }
+        
+        const recentJobs = await this.jobRepo.collection.find().sort({ updated_at: -1 }).limit(3).toArray();
+        if (!recentJobs.length) {
+          await this.sock.sendMessage(remoteJid, { text: "No jobs found in the database yet." });
+          return;
+        }
+        
+        let reply = "💼 *Latest 3 Jobs*\n\n";
+        recentJobs.forEach(j => {
+          reply += `🏢 *${j.company}*\nRole: ${j.role}\n🔗 ${j.link}\n\n`;
+        });
+        await this.sock.sendMessage(remoteJid, { text: reply.trim() });
+      } 
+      else if (command === '/notifications' || command === '/latest_notifications') {
+        if (!this.notifRepo) {
+          await this.sock.sendMessage(remoteJid, { text: "❌ Notification Database is currently unavailable." });
+          return;
+        }
+
+        const recentNotifs = await this.notifRepo.collection.find().sort({ updated_at: -1 }).limit(3).toArray();
+        if (!recentNotifs.length) {
+          await this.sock.sendMessage(remoteJid, { text: "No notifications found in the database yet." });
+          return;
+        }
+        
+        let reply = "🔔 *Latest 3 Notifications*\n\n";
+        recentNotifs.forEach(n => {
+          reply += `📌 *${n.title}*\nDate: ${n.date}\n\n`;
+        });
+        await this.sock.sendMessage(remoteJid, { text: reply.trim() });
+      } 
+      else {
+        // Default help menu for any unrecognised text in DMs
+        const menu = `👋 *Hello from the TNP Notifier Bot!*\n\n` +
+                     `I automatically forward updates from the TNP Portal to your group. Here are the commands you can use in this chat:\n\n` +
+                     `🛠️ */ping* - Check if the bot is responsive\n` +
+                     `📊 */status* - Check the bot's current monitoring status\n` +
+                     `💼 */jobs* - Fetch the 3 most recently updated jobs\n` +
+                     `🔔 */notifications* - Fetch the 3 most recent TNP notifications\n` +
+                     `ℹ️ */help* - Show this menu again\n\n` +
+                     `_Note: These commands only work in direct messages, not in groups._`;
+        await this.sock.sendMessage(remoteJid, { text: menu });
+      }
+    } catch (err) {
+      console.error("Error handling command:", err);
+    }
   }
 
   async sendMessage(targetGroup, payload) {

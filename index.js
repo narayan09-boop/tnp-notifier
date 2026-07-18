@@ -57,7 +57,7 @@ async function main() {
     const notifRepo = new NotificationRepository(db);
 
     // 2. Initialize WhatsApp Bot
-    const bot = new Bot();
+    const bot = new Bot(jobRepo, notifRepo);
     await bot.initialize();
 
     // 3. Check if the Group ID has been configured
